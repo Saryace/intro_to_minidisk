@@ -1,0 +1,278 @@
+---
+title: "{infiltrodisc}"
+subtitle: "Soil Biophysics Lab"
+author: "Sara Acevedo / Carolina Giraldo"
+title-slide-attributes:
+    data-background-image: "img/01_mini.png"
+    data-background-size: contain
+    data-background-opacity: "0.5"
+format:
+  revealjs: 
+    slide-number: true
+    theme: default
+from: markdown+emoji
+output-dir: docs
+execute:
+  echo: true
+---
+
+# [Hello!]{style="color: white;float:center;text-align:left;"} {background-color="#56cc9d"} 
+
+{{< fa brands twitter size=1.4xl >}} saryace | {{< fa brands github size=1.4xl >}} Saryace | {{< fa globe size=1.4xl >}} saryace.github.io
+
+::: {.incremental}
+
+- Sara Acevedo
+- R user :woman_technologist:
+
+:::
+
+## InfiltrodiscR
+
+In this session:
+
+::: {.incremental}
+-   Data wrangling
+-   Functions
+-   Calculating K
+-   Plotting
+
+::: 
+
+---
+
+## R code and materials
+
+The presentations contain actual R code (can be copied and pasted directly). This repository will contain the material and content for this session.
+
+```{r}
+1 + 1 # copy and paste!
+```
+::: info-box
+
+The repository is here:
+
+<center>
+<i class="fa-solid fa-book"></i> [Github repo](https://github.com/Saryace/tidyr_2023)
+</center>
+
+:::
+
+## Requirements
+### `infiltrodiscR::` needs:
+
+* Tidy oriented package (you need to install {tidyverse})
+* Your data must be in two numeric columns: time and infiltration
+* You need data on soil texture (USDA) and suction (like "xcm") for each measurement
+
+## How to install it
+```{r}
+#| eval: false
+install.packages("devtools")
+install.packages("tidyverse")
+install.packages("broom")
+install.packages("glue")
+
+devtools::install_github("biofisicasuelos/infiltrodiscR")
+
+```
+
+## `infiltrodiscR::` functions
+
+**`infiltration()`**
+This function calculates cumulative infiltration and the square root of time, using time and volume recorded. 
+
+**`vg_par`**
+This function returns the parameter *A*, *no_h* and *alpha* related to the van Genuchten parameters (van Genuchten, 1980), from tabulated data calculated for a radius of 2.25 cm, including 12 soil texture classes and suctions from -0.5 cm to -7 cm. Data from (Decagon Devices, Inc., 2005)
+
+## `infiltrodiscR::` functions
+
+**`parameter_A`**
+This function returns the parameter *A* calculated from the equation proposed by Zhang (1997)
+
+
+## Tutorial part 1: data wrangling
+
+Let's load some data
+
+```{r}
+library(tidyverse)
+library(fs)
+library(kableExtra)
+
+info_soils <- read_csv("data_suelos/info_suelos.csv")
+
+csv_data <- dir_ls("data", regexp = "\\.csv$")
+
+data_infiltration <- 
+csv_data %>% 
+  map_dfr(read_csv, .id = "source") %>% 
+  mutate(source = str_sub(source, start = 12, end = -5)) %>% 
+  rename(soil = source)
+
+```
+
+## Tutorial part 1: data wrangling
+
+Three columns: soil ID, time and volume
+
+```{r}
+
+data_infiltration
+
+```
+
+## Tutorial part 1: data wrangling
+
+Now the infiltration data will be nested: 
+
+```{r}
+
+data_infiltration_nested <- 
+data_infiltration %>% 
+  group_by(soil) %>% 
+  nest()
+
+```
+
+Each soil (or measurement or location) has its infiltration data nested
+
+## Tutorial part 1: data wrangling
+
+Now we need information about soil texture (USDA) and tension
+
+```{r}
+data_infiltration_all <- 
+data_infiltration_nested %>% 
+  left_join(info_soils, by = join_by(soil == suelo))
+
+data_infiltration_all
+```
+## Tutorial part 2: functions
+
+First, we use the `infiltration()` function
+
+```{r}
+library(infiltrodiscR)
+
+data_infiltration_all %>% 
+  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% 
+  unnest(data) # let's check the data nested created
+
+```
+
+## Tutorial part 2: functions
+
+Let's check the `var_par()` function
+
+```{r}
+data_infiltration_all %>% 
+  select(-sand,-silt,-clay) %>% 
+  vg_par()
+
+```
+
+## Tutorial part 3: calculating K
+
+The hydraulic conductivity of the soil K at a specific suctions is calculated as: K(h) = C1 / A. Parameter C1 is calculated fitting a polynomial function of the second degree (y = ax2+b), where a is parameter C1, x is the square root of time and y is the cumulative infiltration. For this step, we use the package broom and base R.
+
+## Tutorial part 3: calculating K
+
+Here we use lm(poly) to get a polynomial regression
+
+```{r}
+library(broom)
+
+data_infiltration_all %>% 
+  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% 
+  vg_par() %>% 
+    mutate(
+    fit = map(data, ~ lm(infiltration ~ poly(sqrt_time, 2, raw = TRUE), data = .x)),
+    tidied = map(fit, tidy)
+  ) 
+```
+
+## Tutorial part 3: calculating K
+
+The coefficients are unnested and only "a" (or C1) are filtered
+
+```{r}
+
+data_infiltration_all %>% 
+  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% 
+  vg_par() %>% 
+    mutate(
+    fit = map(data, ~ lm(infiltration ~ poly(sqrt_time, 2, raw = TRUE), data = .x)),
+    tidied = map(fit, tidy)
+  ) %>% 
+  unnest(tidied) %>% 
+  filter(term == "poly(sqrt_time, 2, raw = TRUE)2")  # to filter "a" which = C1
+
+```
+
+## Tutorial part 3: calculating K
+
+```{r}
+final_calculations <-
+data_infiltration_all %>% 
+  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% 
+  vg_par() %>% 
+    mutate(
+    fit = map(data, ~ lm(infiltration ~ poly(sqrt_time, 2, raw = TRUE), data = .x)),
+    tidied = map(fit, tidy)
+  ) %>% 
+  unnest(tidied) %>% 
+  filter(term == "poly(sqrt_time, 2, raw = TRUE)2") %>%   # to filter "a" which = C1
+  rename(C1 = estimate) %>%
+  parameter_A() %>% # function to calculate A (not from the table)
+  mutate(K_h = C1 / parameter_A) # finally the value of K!
+```
+
+## Tutorial part 3: calculating K
+
+```{r}
+
+final_calculations %>% 
+  select(soil, suction, texture, parameter_A, K_h)
+```
+
+## Tutorial part 4: plotting
+
+Because data is nested, it is possible also iterate plots
+
+```{r}
+library(glue)
+
+plots <- 
+final_calculations %>%
+  mutate(plot = map2(
+    data,
+    soil,
+    ~ ggplot(
+      data = .x,
+      aes(
+        x = sqrt_time,
+        y = infiltration
+      )
+    ) +
+      geom_point() +
+      stat_smooth(method = 'lm', formula = y ~ poly(x, 2)) +
+      ggtitle(glue(
+        "Soil : {soil}"
+      ))
+  ))
+
+```
+
+## Tutorial part 4: plotting
+
+Because data is nested, it is possible also iterate plots
+
+```{r}
+
+patchwork::wrap_plots(plots$plot, ncol = 3)  
+
+```
+
+
+# [{{< fa brands r-project size=1.4xl >}} A lot of code for today! :brain: :fire:]{style="color:white;float:right;text-align:right;"} {background-color="#56cc9d"}

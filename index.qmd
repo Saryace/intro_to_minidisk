@@ -18,8 +18,6 @@ execute:
 
 # [Hello!]{style="color: white;float:center;text-align:left;"} {background-color="#56cc9d"} 
 
-{{< fa brands twitter size=1.4xl >}} saryace | {{< fa brands github size=1.4xl >}} Saryace | {{< fa globe size=1.4xl >}} saryace.github.io
-
 ::: {.incremental}
 
 - Sara Acevedo

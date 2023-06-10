@@ -1,0 +1,135 @@
+[
+  {
+    "objectID": "index.html#infiltrodiscr",
+    "href": "index.html#infiltrodiscr",
+    "title": "{infiltrodiscR}",
+    "section": "InfiltrodiscR",
+    "text": "InfiltrodiscR\nIn this session:\n\n\nData wrangling\nFunctions\nCalculating K\nPlotting"
+  },
+  {
+    "objectID": "index.html#r-code-and-materials",
+    "href": "index.html#r-code-and-materials",
+    "title": "{infiltrodiscR}",
+    "section": "R code and materials",
+    "text": "R code and materials\nThe presentations contain actual R code (can be copied and pasted directly). This repository will contain the material and content for this session.\n\n1 + 1 # copy and paste!\n\n[1] 2\n\n\n\nThe repository is here:\n\n Github repo"
+  },
+  {
+    "objectID": "index.html#requirements",
+    "href": "index.html#requirements",
+    "title": "{infiltrodiscR}",
+    "section": "Requirements",
+    "text": "Requirements\ninfiltrodiscR:: needs:\n\nTidy oriented package (you need to install {tidyverse})\nYour data must be in two numeric columns: time and infiltration\nYou need data on soil texture (USDA) and suction (like “xcm”) for each measurement"
+  },
+  {
+    "objectID": "index.html#how-to-install-it",
+    "href": "index.html#how-to-install-it",
+    "title": "{infiltrodiscR}",
+    "section": "How to install it",
+    "text": "How to install it\n\ninstall.packages(\"devtools\")\ninstall.packages(\"tidyverse\")\ninstall.packages(\"broom\")\ninstall.packages(\"glue\")\n\ndevtools::install_github(\"biofisicasuelos/infiltrodiscR\")"
+  },
+  {
+    "objectID": "index.html#infiltrodiscr-functions",
+    "href": "index.html#infiltrodiscr-functions",
+    "title": "{infiltrodiscR}",
+    "section": "infiltrodiscR:: functions",
+    "text": "infiltrodiscR:: functions\ninfiltration() This function calculates cumulative infiltration and the square root of time, using time and volume recorded.\nvg_par This function returns the parameter A, no_h and alpha related to the van Genuchten parameters (van Genuchten, 1980), from tabulated data calculated for a radius of 2.25 cm, including 12 soil texture classes and suctions from -0.5 cm to -7 cm. Data from (Decagon Devices, Inc., 2005)"
+  },
+  {
+    "objectID": "index.html#infiltrodiscr-functions-1",
+    "href": "index.html#infiltrodiscr-functions-1",
+    "title": "{infiltrodiscR}",
+    "section": "infiltrodiscR:: functions",
+    "text": "infiltrodiscR:: functions\nparameter_A This function returns the parameter A calculated from the equation proposed by Zhang (1997)"
+  },
+  {
+    "objectID": "index.html#tutorial-part-1-data-wrangling",
+    "href": "index.html#tutorial-part-1-data-wrangling",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 1: data wrangling",
+    "text": "Tutorial part 1: data wrangling\nLet’s load some data\n\nlibrary(tidyverse)\nlibrary(fs)\nlibrary(kableExtra)\n\ninfo_soils <- read_csv(\"data_suelos/info_suelos.csv\")\n\ncsv_data <- dir_ls(\"data\", regexp = \"\\\\.csv$\")\n\ndata_infiltration <- \ncsv_data %>% \n  map_dfr(read_csv, .id = \"source\") %>% \n  mutate(source = str_sub(source, start = 12, end = -5)) %>% \n  rename(soil = source)"
+  },
+  {
+    "objectID": "index.html#tutorial-part-1-data-wrangling-1",
+    "href": "index.html#tutorial-part-1-data-wrangling-1",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 1: data wrangling",
+    "text": "Tutorial part 1: data wrangling\nThree columns: soil ID, time and volume\n\ndata_infiltration\n\n# A tibble: 23 × 3\n   soil   time volume\n   <chr> <dbl>  <dbl>\n 1 a         0     93\n 2 a         5     89\n 3 a        10     86\n 4 a        15     83\n 5 a        20     80\n 6 a        25     77\n 7 a        30     75\n 8 a        35     73\n 9 b         0     95\n10 b        10     91\n# ℹ 13 more rows"
+  },
+  {
+    "objectID": "index.html#tutorial-part-1-data-wrangling-2",
+    "href": "index.html#tutorial-part-1-data-wrangling-2",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 1: data wrangling",
+    "text": "Tutorial part 1: data wrangling\nNow the infiltration data will be nested:\n\ndata_infiltration_nested <- \ndata_infiltration %>% \n  group_by(soil) %>% \n  nest()\n\nEach soil (or measurement or location) has its infiltration data nested"
+  },
+  {
+    "objectID": "index.html#tutorial-part-1-data-wrangling-3",
+    "href": "index.html#tutorial-part-1-data-wrangling-3",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 1: data wrangling",
+    "text": "Tutorial part 1: data wrangling\nNow we need information about soil texture (USDA) and tension\n\ndata_infiltration_all <- \ndata_infiltration_nested %>% \n  left_join(info_soils, by = join_by(soil == suelo))\n\ndata_infiltration_all\n\n# A tibble: 3 × 7\n# Groups:   soil [3]\n  soil  data              sand  silt  clay suction texture   \n  <chr> <list>           <dbl> <dbl> <dbl> <chr>   <chr>     \n1 a     <tibble [8 × 2]>    40    40    20 2cm     silt loam \n2 b     <tibble [8 × 2]>    20    30    50 2cm     clay      \n3 c     <tibble [7 × 2]>    70    20    10 3cm     sandy loam"
+  },
+  {
+    "objectID": "index.html#tutorial-part-2-functions",
+    "href": "index.html#tutorial-part-2-functions",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 2: functions",
+    "text": "Tutorial part 2: functions\nFirst, we use the infiltration() function\n\nlibrary(infiltrodiscR)\n\ndata_infiltration_all %>% \n  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% \n  unnest(data) # let's check the data nested created\n\n# A tibble: 23 × 11\n# Groups:   soil [3]\n   soil   time volume sqrt_time volume_infiltrated infiltration  sand  silt\n   <chr> <dbl>  <dbl>     <dbl>              <dbl>        <dbl> <dbl> <dbl>\n 1 a         0     93      0                     0         0       40    40\n 2 a         5     89      2.24                  4         0.25    40    40\n 3 a        10     86      3.16                  7         0.44    40    40\n 4 a        15     83      3.87                 10         0.63    40    40\n 5 a        20     80      4.47                 13         0.82    40    40\n 6 a        25     77      5                    16         1.01    40    40\n 7 a        30     75      5.48                 18         1.13    40    40\n 8 a        35     73      5.92                 20         1.26    40    40\n 9 b         0     95      0                     0         0       20    30\n10 b        10     91      3.16                  4         0.25    20    30\n# ℹ 13 more rows\n# ℹ 3 more variables: clay <dbl>, suction <chr>, texture <chr>"
+  },
+  {
+    "objectID": "index.html#tutorial-part-2-functions-1",
+    "href": "index.html#tutorial-part-2-functions-1",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 2: functions",
+    "text": "Tutorial part 2: functions\nLet’s check the var_par() function\n\ndata_infiltration_all %>% \n  select(-sand,-silt,-clay) %>% \n  vg_par()\n\n# A tibble: 3 × 7\n# Groups:   soil [3]\n  soil  data             suction texture    alpha  n_ho value_A\n  <chr> <list>           <chr>   <chr>      <dbl> <dbl>   <dbl>\n1 a     <tibble [8 × 2]> 2cm     silt loam  0.02   1.41    7.93\n2 b     <tibble [8 × 2]> 2cm     clay       0.008  1.09    4.30\n3 c     <tibble [7 × 2]> 3cm     sandy loam 0.075  1.89    3.93"
+  },
+  {
+    "objectID": "index.html#tutorial-part-3-calculating-k",
+    "href": "index.html#tutorial-part-3-calculating-k",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 3: calculating K",
+    "text": "Tutorial part 3: calculating K\nThe hydraulic conductivity of the soil K at a specific suctions is calculated as: K(h) = C1 / A. Parameter C1 is calculated fitting a polynomial function of the second degree (y = ax2+b), where a is parameter C1, x is the square root of time and y is the cumulative infiltration. For this step, we use the package broom and base R."
+  },
+  {
+    "objectID": "index.html#tutorial-part-3-calculating-k-1",
+    "href": "index.html#tutorial-part-3-calculating-k-1",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 3: calculating K",
+    "text": "Tutorial part 3: calculating K\nHere we use lm(poly) to get a polynomial regression\n\nlibrary(broom)\n\ndata_infiltration_all %>% \n  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% \n  vg_par() %>% \n    mutate(\n    fit = map(data, ~ lm(infiltration ~ poly(sqrt_time, 2, raw = TRUE), data = .x)),\n    tidied = map(fit, tidy)\n  ) \n\n# A tibble: 3 × 12\n# Groups:   soil [3]\n  soil  data      sand  silt  clay suction texture    alpha  n_ho value_A fit   \n  <chr> <list>   <dbl> <dbl> <dbl> <chr>   <chr>      <dbl> <dbl>   <dbl> <list>\n1 a     <tibble>    40    40    20 2cm     silt loam  0.02   1.41    7.93 <lm>  \n2 b     <tibble>    20    30    50 2cm     clay       0.008  1.09    4.30 <lm>  \n3 c     <tibble>    70    20    10 3cm     sandy loam 0.075  1.89    3.93 <lm>  \n# ℹ 1 more variable: tidied <list>"
+  },
+  {
+    "objectID": "index.html#tutorial-part-3-calculating-k-2",
+    "href": "index.html#tutorial-part-3-calculating-k-2",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 3: calculating K",
+    "text": "Tutorial part 3: calculating K\nThe coefficients are unnested and only “a” (or C1) are filtered\n\ndata_infiltration_all %>% \n  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% \n  vg_par() %>% \n    mutate(\n    fit = map(data, ~ lm(infiltration ~ poly(sqrt_time, 2, raw = TRUE), data = .x)),\n    tidied = map(fit, tidy)\n  ) %>% \n  unnest(tidied) %>% \n  filter(term == \"poly(sqrt_time, 2, raw = TRUE)2\")  # to filter \"a\" which = C1\n\n# A tibble: 3 × 16\n# Groups:   soil [3]\n  soil  data      sand  silt  clay suction texture    alpha  n_ho value_A fit   \n  <chr> <list>   <dbl> <dbl> <dbl> <chr>   <chr>      <dbl> <dbl>   <dbl> <list>\n1 a     <tibble>    40    40    20 2cm     silt loam  0.02   1.41    7.93 <lm>  \n2 b     <tibble>    20    30    50 2cm     clay       0.008  1.09    4.30 <lm>  \n3 c     <tibble>    70    20    10 3cm     sandy loam 0.075  1.89    3.93 <lm>  \n# ℹ 5 more variables: term <chr>, estimate <dbl>, std.error <dbl>,\n#   statistic <dbl>, p.value <dbl>"
+  },
+  {
+    "objectID": "index.html#tutorial-part-3-calculating-k-3",
+    "href": "index.html#tutorial-part-3-calculating-k-3",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 3: calculating K",
+    "text": "Tutorial part 3: calculating K\n\nfinal_calculations <-\ndata_infiltration_all %>% \n  mutate(data = map(data, ~ infiltration(.), data = .x)) %>% \n  vg_par() %>% \n    mutate(\n    fit = map(data, ~ lm(infiltration ~ poly(sqrt_time, 2, raw = TRUE), data = .x)),\n    tidied = map(fit, tidy)\n  ) %>% \n  unnest(tidied) %>% \n  filter(term == \"poly(sqrt_time, 2, raw = TRUE)2\") %>%   # to filter \"a\" which = C1\n  rename(C1 = estimate) %>%\n  parameter_A() %>% # function to calculate A (not from the table)\n  mutate(K_h = C1 / parameter_A) # finally the value of K!"
+  },
+  {
+    "objectID": "index.html#tutorial-part-3-calculating-k-4",
+    "href": "index.html#tutorial-part-3-calculating-k-4",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 3: calculating K",
+    "text": "Tutorial part 3: calculating K\n\nfinal_calculations %>% \n  select(soil, suction, texture, parameter_A, K_h)\n\n# A tibble: 3 × 5\n# Groups:   soil [3]\n  soil  suction texture    parameter_A       K_h\n  <chr> <chr>   <chr>            <dbl>     <dbl>\n1 a     2cm     silt loam         7.93  0.00331 \n2 b     2cm     clay              4.30  0.00305 \n3 c     3cm     sandy loam        3.93 -0.000784"
+  },
+  {
+    "objectID": "index.html#tutorial-part-4-plotting",
+    "href": "index.html#tutorial-part-4-plotting",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 4: plotting",
+    "text": "Tutorial part 4: plotting\nBecause data is nested, it is possible also iterate plots\n\nlibrary(glue)\n\nplots <- \nfinal_calculations %>%\n  mutate(plot = map2(\n    data,\n    soil,\n    ~ ggplot(\n      data = .x,\n      aes(\n        x = sqrt_time,\n        y = infiltration\n      )\n    ) +\n      geom_point() +\n      stat_smooth(method = 'lm', formula = y ~ poly(x, 2)) +\n      ggtitle(glue(\n        \"Soil : {soil}\"\n      ))\n  ))"
+  },
+  {
+    "objectID": "index.html#tutorial-part-4-plotting-1",
+    "href": "index.html#tutorial-part-4-plotting-1",
+    "title": "{infiltrodiscR}",
+    "section": "Tutorial part 4: plotting",
+    "text": "Tutorial part 4: plotting\nBecause data is nested, it is possible also iterate plots\n\npatchwork::wrap_plots(plots$plot, ncol = 3)"
+  }
+]

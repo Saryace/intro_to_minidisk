@@ -1,7 +1,7 @@
 ---
-title: "{infiltrodisc}"
+title: "{infiltrodiscR}"
 subtitle: "Soil Biophysics Lab"
-author: "Sara Acevedo / Carolina Giraldo"
+author: "Sara Acevedo / Carolina Giraldo + Soil Biophysics Lab"
 title-slide-attributes:
     data-background-image: "img/01_mini.png"
     data-background-size: contain
@@ -20,10 +20,29 @@ execute:
 
 ::: {.incremental}
 
-- Sara Acevedo
-- R user :woman_technologist:
+- Sara Acevedo :woman_technologist: Ph.D. Engineering Sciences
+- Carolina Giraldo :woman_technologist: Ph.D. (c) Engineering Sciences 
+- Soil Biophysics Lab
+- Pontificia Universidad Católica de Chile
 
 :::
+
+#
+
+```{r}
+#| echo: FALSE
+library(leaflet)
+leaflet() %>%
+  addTiles() %>%
+  addPopups(lng = -70.6149164,
+             lat =  -33.4995699,
+             popup = "Soil Biophysics Lab",
+             options = popupOptions(closeButton = FALSE)) %>% 
+  setView(lng = -70.6149164,
+          lat =  -33.4995699,
+          zoom = 17)
+
+```
 
 ## InfiltrodiscR
 

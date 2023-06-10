@@ -1,7 +1,7 @@
 ---
 title: "{infiltrodiscR}"
 subtitle: "Soil Biophysics Lab"
-author: "Sara Acevedo / Carolina Giraldo + Soil Biophysics Lab"
+author: "Sara Acevedo / Carolina Giraldo"
 title-slide-attributes:
     data-background-image: "img/01_mini.png"
     data-background-size: contain
@@ -70,7 +70,7 @@ The presentations contain actual R code (can be copied and pasted directly). Thi
 The repository is here:
 
 <center>
-<i class="fa-solid fa-book"></i> [Github repo](https://github.com/Saryace/tidyr_2023)
+<i class="fa-solid fa-book"></i> [Github repo](https://github.com/Saryace/intro_to_minidisk)
 </center>
 
 :::
